@@ -191,7 +191,7 @@ public class ExportHistoryItem implements NavigationItem {
         @Override
         public void execute(WiFiDetail wiFiDetail) {
             WiFiSignal wiFiSignal = wiFiDetail.getWiFiSignal();
-            result.append(String.format(Locale.ENGLISH, "%s|%s|%s|%ddBm|%d|%d%s|%d|%d%s|%d%s (%d - %d)|%s|%s%n",
+            result.append(String.format(Locale.ENGLISH, "%s|%s|%s|%ddBm|%d|%d%s|%d|%d%s|%d%s (%d - %d)|%s|%s%n|%s",
                     timestamp,
                     wiFiDetail.getSSID(),
                     wiFiDetail.getBSSID(),
@@ -207,7 +207,8 @@ public class ExportHistoryItem implements NavigationItem {
                     wiFiSignal.getFrequencyStart(),
                     wiFiSignal.getFrequencyEnd(),
                     wiFiSignal.getDistance(),
-                    wiFiDetail.getCapabilities()));
+                    wiFiDetail.getCapabilities(),
+                    "qqqqq"));
         }
     }
 
