@@ -1,8 +1,13 @@
 package com.vrem.wifianalyzer.navigation.items;
 
+import android.Manifest;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Environment;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.view.MenuItem;
 import android.widget.Toast;
@@ -18,6 +23,8 @@ import com.vrem.wifianalyzer.wifi.model.WiFiSignal;
 import org.apache.commons.collections4.Closure;
 import org.apache.commons.collections4.IterableUtils;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -44,11 +51,58 @@ public class ExportHistoryItem implements NavigationItem {
             for (int i = 0; i < history.size(); i++) {
                 List<WiFiDetail> historyDetails = history.get(i).getWiFiDetails();
                 data += getData(historyTime.get(i), historyDetails);
-                data+=String.valueOf(i)+"-------------------------------------"+"\n";
+                data+=String.valueOf(i)+"---"+"\n";
             }
+        }
+//        Intent emailIntent = new Intent(Intent.ACTION_SEND);
+        boolean isWrote;
+        File file = new File(Environment.getExternalStorageDirectory().getAbsolutePath(),"History.txt");
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (!Settings.System.canWrite(mainActivity.getBaseContext())) {
+                    mainActivity.requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                            Manifest.permission.READ_EXTERNAL_STORAGE}, 2909);
+                } else {
+                    FileWriter writer = new FileWriter(file, true);
+                    writer.write(data);
+                    writer.flush();
+                    writer.close();
+                    isWrote = true;
+                }
+            } else {
+                FileWriter writer = new FileWriter(file, true);
+                writer.write(data);
+                writer.flush();
+                writer.close();
+                isWrote = true;
+            }
+            data+=file.getAbsolutePath();
+            isWrote = true;
+        }catch (Exception e){
+            isWrote = false;
         }
         Intent intent = createIntent(title, data);
         Intent chooser = createChooserIntent(intent, title);
+        if(isWrote){
+            Uri path = Uri.fromFile(file);
+            intent.putExtra(Intent.EXTRA_STREAM, path);
+//            emailIntent.putExtra(Intent.EXTRA_STREAM, path);
+        }else{
+
+        }
+
+// set the type to 'email'
+//        emailIntent .setType("vnd.android.cursor.dir/email");
+//        String to[] = {"asd@gmail.com"};
+//        emailIntent .putExtra(Intent.EXTRA_EMAIL, to);
+// the attachment
+//        emailIntent .putExtra(Intent.EXTRA_STREAM, path);
+// the mail subject
+//        emailIntent .putExtra(Intent.EXTRA_SUBJECT, "Subject");
+//        startActivity(Intent.createChooser(emailIntent , "Send email..."));
+
+
+
         if (!exportAvailable(mainActivity, chooser)) {
             Toast.makeText(mainActivity, R.string.export_not_available, Toast.LENGTH_LONG).show();
             return;
