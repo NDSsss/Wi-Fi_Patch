@@ -54,55 +54,8 @@ public class ExportHistoryItem implements NavigationItem {
                 data+=String.valueOf(i)+"---"+"\n";
             }
         }
-//        Intent emailIntent = new Intent(Intent.ACTION_SEND);
-        boolean isWrote;
-        File file = new File(Environment.getExternalStorageDirectory().getAbsolutePath(),"History.txt");
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (!Settings.System.canWrite(mainActivity.getBaseContext())) {
-                    mainActivity.requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                            Manifest.permission.READ_EXTERNAL_STORAGE}, 2909);
-                } else {
-                    FileWriter writer = new FileWriter(file, true);
-                    writer.write(data);
-                    writer.flush();
-                    writer.close();
-                    isWrote = true;
-                }
-            } else {
-                FileWriter writer = new FileWriter(file, true);
-                writer.write(data);
-                writer.flush();
-                writer.close();
-                isWrote = true;
-            }
-            data+=file.getAbsolutePath();
-            isWrote = true;
-        }catch (Exception e){
-            isWrote = false;
-        }
         Intent intent = createIntent(title, data);
         Intent chooser = createChooserIntent(intent, title);
-        if(isWrote){
-            Uri path = Uri.fromFile(file);
-            intent.putExtra(Intent.EXTRA_STREAM, path);
-//            emailIntent.putExtra(Intent.EXTRA_STREAM, path);
-        }else{
-
-        }
-
-// set the type to 'email'
-//        emailIntent .setType("vnd.android.cursor.dir/email");
-//        String to[] = {"asd@gmail.com"};
-//        emailIntent .putExtra(Intent.EXTRA_EMAIL, to);
-// the attachment
-//        emailIntent .putExtra(Intent.EXTRA_STREAM, path);
-// the mail subject
-//        emailIntent .putExtra(Intent.EXTRA_SUBJECT, "Subject");
-//        startActivity(Intent.createChooser(emailIntent , "Send email..."));
-
-
-
         if (!exportAvailable(mainActivity, chooser)) {
             Toast.makeText(mainActivity, R.string.export_not_available, Toast.LENGTH_LONG).show();
             return;
@@ -179,11 +132,11 @@ public class ExportHistoryItem implements NavigationItem {
         return timestamp;
     }
 
-    private class WiFiDetailClosure implements Closure<WiFiDetail> {
+    public class WiFiDetailClosure implements Closure<WiFiDetail> {
         private final StringBuilder result;
         private final String timestamp;
 
-        private WiFiDetailClosure(String timestamp, @NonNull StringBuilder result) {
+        public WiFiDetailClosure(String timestamp, @NonNull StringBuilder result) {
             this.result = result;
             this.timestamp = timestamp;
         }

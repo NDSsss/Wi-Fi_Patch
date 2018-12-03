@@ -18,23 +18,39 @@
 
 package com.vrem.wifianalyzer.wifi.scanner;
 
+import android.app.Application;
+import android.content.Context;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.Environment;
 import android.os.Handler;
 import android.support.annotation.NonNull;
+import android.util.Log;
+import android.widget.Toast;
 
+import com.vrem.wifianalyzer.MainContext;
+import com.vrem.wifianalyzer.navigation.items.ExportHistoryItem;
 import com.vrem.wifianalyzer.settings.Settings;
 import com.vrem.wifianalyzer.wifi.model.WiFiData;
+import com.vrem.wifianalyzer.wifi.model.WiFiDetail;
+import com.vrem.wifianalyzer.wifi.model.WiFiSignal;
 
 import org.apache.commons.collections4.Closure;
 import org.apache.commons.collections4.IterableUtils;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 class Scanner implements ScannerService {
     private static final String TIME_STAMP_FORMAT = "yyyy/MM/dd HH:mm:ss";
@@ -47,6 +63,8 @@ class Scanner implements ScannerService {
     private PeriodicScan periodicScan;
     private ArrayList<WiFiData> logCash;
     private ArrayList<String> logCashTimeStamp;
+    private File file;
+    private File filePath;
 
     Scanner(@NonNull WifiManager wifiManager, @NonNull Handler handler, @NonNull Settings settings) {
         this.updateNotifiers = new ArrayList<>();
@@ -58,6 +76,8 @@ class Scanner implements ScannerService {
         this.periodicScan = new PeriodicScan(this, handler, settings);
         logCash = new ArrayList<>();
         logCashTimeStamp = new ArrayList<>();
+        filePath = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).getAbsolutePath()+"/wifiAnalyzer");
+        file = new File(filePath,"history"+String.valueOf(new Date().getTime())+".txt");
     }
 
     @Override
@@ -65,9 +85,53 @@ class Scanner implements ScannerService {
         enableWiFi();
         scanResults();
         wiFiData = transformer.transformToWiFiData(cache.getScanResults(), wiFiInfo(), wifiConfiguration());
-        logCash.add(wiFiData);
+        if(logCash.size()<10) {
+            logCash.add(wiFiData);
+        } else {
+            writeToFile(logCash);
+            logCash.clear();
+        }
         logCashTimeStamp.add(new SimpleDateFormat(TIME_STAMP_FORMAT).format(new Date()));
         IterableUtils.forEach(updateNotifiers, new UpdateClosure());
+    }
+
+    private void writeToFile(ArrayList<WiFiData> cash){
+        try {
+            String data ="";
+            ArrayList<WiFiData> history = cash;
+            ArrayList<String> historyTime = getHistoryTime();
+            if(history.size()==historyTime.size()) {
+                for (int i = 0; i < history.size(); i++) {
+                    List<WiFiDetail> historyDetails = history.get(i).getWiFiDetails();
+                    data += getData(historyTime.get(i), historyDetails);
+                    data+=String.valueOf(i)+"---"+"\n";
+                }
+            }
+            if(!filePath.exists()) {
+                filePath.mkdir();
+            }
+            FileWriter writer = new FileWriter(file, true);
+            BufferedWriter bufferWriter = new BufferedWriter(writer);
+            bufferWriter.write(data);
+            bufferWriter.close();
+        }
+        catch (IOException e) {
+            Log.e("Exception", "File write failed: " + e.toString());
+        }
+    }
+
+    @NonNull
+    String getData(String timestamp, @NonNull List<WiFiDetail> wiFiDetails) {
+        final StringBuilder result = new StringBuilder();
+        result.append(
+                String.format(Locale.ENGLISH,
+                        "Time Stamp|SSID|BSSID|Strength|Primary Channel|Primary Frequency|Center Channel|Center Frequency|Width (Range)|Distance|Security%n"));
+        IterableUtils.forEach(wiFiDetails, new WiFiDetailClosure(timestamp, result));
+        return result.toString();
+    }
+
+    ArrayList<String> getHistoryTime(){
+        return MainContext.INSTANCE.getScannerService().getLogCashTime();
     }
 
     @Override
@@ -194,6 +258,39 @@ class Scanner implements ScannerService {
         @Override
         public void execute(UpdateNotifier updateNotifier) {
             updateNotifier.update(wiFiData);
+        }
+    }
+
+    public class WiFiDetailClosure implements Closure<WiFiDetail> {
+        private final StringBuilder result;
+        private final String timestamp;
+
+        public WiFiDetailClosure(String timestamp, @NonNull StringBuilder result) {
+            this.result = result;
+            this.timestamp = timestamp;
+        }
+
+        @Override
+        public void execute(WiFiDetail wiFiDetail) {
+            WiFiSignal wiFiSignal = wiFiDetail.getWiFiSignal();
+            result.append(String.format(Locale.ENGLISH, "%s|%s|%s|%ddBm|%d|%d%s|%d|%d%s|%d%s (%d - %d)|%s|%s%n|%s",
+                    timestamp,
+                    wiFiDetail.getSSID(),
+                    wiFiDetail.getBSSID(),
+                    wiFiSignal.getLevel(),
+                    wiFiSignal.getPrimaryWiFiChannel().getChannel(),
+                    wiFiSignal.getPrimaryFrequency(),
+                    WiFiSignal.FREQUENCY_UNITS,
+                    wiFiSignal.getCenterWiFiChannel().getChannel(),
+                    wiFiSignal.getCenterFrequency(),
+                    WiFiSignal.FREQUENCY_UNITS,
+                    wiFiSignal.getWiFiWidth().getFrequencyWidth(),
+                    WiFiSignal.FREQUENCY_UNITS,
+                    wiFiSignal.getFrequencyStart(),
+                    wiFiSignal.getFrequencyEnd(),
+                    wiFiSignal.getDistance(),
+                    wiFiDetail.getCapabilities(),
+                    "qqqqq"));
         }
     }
 }
